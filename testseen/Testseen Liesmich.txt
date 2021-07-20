@@ -1,0 +1,79 @@
+Anmerkungen zu den Testseen
+===========================
+
+Sie finden hier 7 unterschiedlich komplexe Testseen. Bei den Seen See6, See8, See10, 
+See20 und See30 ist das Startfeld immer oben links (Zeile 0, Spalte 0) und das Zielfeld 
+unten rechts (bei See10 also bei (Zeile 9, Spalte 9). 
+See20Komplex und See30Komplex weichen davon ab.
+
+Eine Seedatei ist ein Textfile, das wie folgt aufgebaut ist (am Beispiel See10):
+Zeile 1 - 4: Start- und Endpunkt (Startzeile, Startspalte, Endzeile, Endspalte)
+Zeile 5 - Ende: Beschreibung der einzelnen See-Zeilen
+
+See10:
+0
+0
+9
+9
+SEEWWWWWWW
+EWWWWWWEWE
+EEEWWWEWWW
+EEEWWEEEEE
+EEEEEEEWEE
+WWWWEEWEEE
+EWEWWWEWEE
+WWWWWEWWEE
+EWEWWWWEEE
+WWWWWWEWWZ
+
+Um eine fertige See-Datei zu nutzen, müssen Sie diese im SeeSimulator laden 
+(siehe Quelltext Zeile 18, Sie müssen den Dateipfad eventuell anpassen).
+Anschließend kann für diese Datei trainiert werden und eine Überquerung durchgeführt werden:
+
+  1 package frozenlake;
+  2 
+  3 import frozenlake.pfadfinder.IPfadfinder;
+  4 
+  5 public class SeeSimulator {
+  6 
+  7     public static void main(String[] args) {
+  8         int anzahlSchritte = 0;
+  9         try {
+ 10 
+ 11             IPfadfinder joe = new frozenlake.pfadfinder.priemer.Pfadfinder(); //Hier muss Ihre konkrete Implementierung hin!
+ 12 
+ 13 //		See testsee = new See("See10",10, new Koordinate(0,0), new Koordinate(9,9));
+ 14 //		testsee.wegErzeugen();
+ 15 //		testsee.speichereSee("See10");
+ 16 
+ 17             //Gespeicherten See verwenden
+ 18             See testsee = See.ladeSee("G:\\tmp\\", "See10");
+ 19 
+ 20             //Trainieren mit StateValue, ohne NN, OffPolicy
+ 21             joe.lerneSee(testsee, true, false, false);
+ 22 
+ 23             //Testdurchlauf mit dem trainierten IPfadfinder
+ 24             joe.starteUeberquerung(testsee, true, false, false);
+ 25             testsee.anzeigen();
+ 26 
+ 27             Zustand naechsterZustand=Zustand.Start;
+ 28             do {
+ 29                 Richtung r = joe.naechsterSchritt(naechsterZustand);
+ 30                 System.out.println("Gehe " + r);
+ 31                 naechsterZustand = testsee.geheNach(r);
+ 32                 anzahlSchritte++;
+ 33                 testsee.anzeigen();
+ 34             } while (!((naechsterZustand==Zustand.Ziel) || (naechsterZustand==Zustand.Wasser)));
+ 35 
+ 36             if (naechsterZustand==Zustand.Ziel) {
+ 37                 System.out.println("Sie haben Ihr Ziel erreicht! Anzahl Schritte: " + anzahlSchritte);
+ 38             } else {
+ 39                 System.out.println("Sie sind im Wasser gelandet. Anzahl Schritte bis dahin: " + anzahlSchritte);
+ 40             }
+ 41         } catch (Exception ex) {
+ 42             System.err.println("Exception nach " + anzahlSchritte + " Schritten!");
+ 43             ex.printStackTrace();
+ 44         }
+ 45     }
+ 46 }
+ 47  
