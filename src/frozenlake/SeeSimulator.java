@@ -24,20 +24,24 @@ public class SeeSimulator {
 
 	public static void main(String[] args) {
 		int anzahlSchritte = 0;
+		boolean useStateValue = false;
+		boolean useNN = false;
+		boolean useOnPolicy = true;
+		int lakeSize = 15;
 		try {
 			IPfadfinder joe = new frozenlake.pfadfinder.mustergruppe.Pfadfinder();
-
-			See testsee2 = new See("Testsee", 6, new Koordinate(0, 0), new Koordinate(5, 5));
-			See testsee = See.ladeSee("D:\\Development\\java\\frozenlake\\testseen\\", "See30Komplex");
-			// testsee = testsee2;
+			See testsee2 = new See("Testsee", lakeSize, new Koordinate(0, 0),
+					new Koordinate(lakeSize - 1, lakeSize - 1));
+			See testsee = See.ladeSee("D:\\Development\\java\\frozenlake\\testseen\\", "See8");
+			testsee = testsee2;
 			testsee.wegErzeugen();
 			// testsee.speichereSee("Testsee");
 			System.out.println("start learning");
 			// Trainieren mit statevalue, mit NN, onpolicy
-			joe.lerneSee(testsee, false, false, true);
+			joe.lerneSee(testsee, useStateValue, useNN, useOnPolicy);
 			System.out.println("finished learning");
 			// Testdurchlauf mit dem trainierten IPfadfinder
-			joe.starteUeberquerung(testsee, false, false, true);
+			joe.starteUeberquerung(testsee, useStateValue, useNN, useOnPolicy);
 			testsee.anzeigen();
 
 			Zustand naechsterZustand = Zustand.Start;

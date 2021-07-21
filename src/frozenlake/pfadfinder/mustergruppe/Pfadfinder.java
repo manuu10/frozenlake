@@ -28,13 +28,13 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 	private Koordinate startPos;
 	private int brd_size;
 	// CONSTANTS
-	final int epochs = 10000;
-	final double REWARD_NEUTRAL = -0.00000000001;
-	final double REWARD_LOOSE = -0.9;
+	final int epochs = 1000;
+	final double REWARD_NEUTRAL = -0.00000001;
+	final double REWARD_LOOSE = -1;
 	final double REWARD_WIN = 0.5;
 
-	final double maxError = 0.5;
-	final double learnrate = 0.03;
+	final double maxError = 0.00001;
+	final double learnrate = 0.5;
 	final double diskont = 0.999;
 
 	boolean useStateValue = false;
@@ -50,10 +50,11 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		q_matrix = new double[brd_size][brd_size][brd_size];
 		int input_size = brd_size * brd_size;
 		int output_size = 1;
+		int hidden_size = input_size * (2 / 3) + output_size;
 		mlp = new MultiLayerPerceptron(TransferFunctionType.TANH, input_size, input_size, input_size, output_size);
 
-		mlp.getLearningRule().setLearningRate(learnrate);
-		mlp.getLearningRule().setMaxError(maxError);
+		// mlp.getLearningRule().setLearningRate(learnrate);
+		// mlp.getLearningRule().setMaxError(maxError);
 		// mlp.getLearningRule().setMaxIterations(99);
 		trainingSet = new DataSet(input_size, output_size);
 		System.out.println("finished initialize");
