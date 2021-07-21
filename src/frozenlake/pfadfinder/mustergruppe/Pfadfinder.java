@@ -28,7 +28,7 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 	private Koordinate startPos;
 	private int brd_size;
 	// CONSTANTS
-	final int epochs = 1000;
+	final int epochs = 10000;
 	final double REWARD_NEUTRAL = -0.00000000001;
 	final double REWARD_LOOSE = -0.9;
 	final double REWARD_WIN = 0.5;
@@ -78,6 +78,9 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 			learnNeuralNet(see, onPolicy);
 			return true;
 		}
+		if (!stateValue && !neuronalesNetz) {
+			learnQValue(see, onPolicy);
+		}
 
 		return false;
 	}
@@ -95,6 +98,11 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 
 	@Override
 	public Richtung naechsterSchritt(Zustand ausgangszustand) {
+		if (!useStateValue) {
+			var stateAction = getMaxValueQMatrixPos(myPlayer, useNeuralNet);
+			myPlayer = addDirToPos(myPlayer, stateAction.first);
+			return stateAction.first;
+		}
 		Tuple<Richtung, Koordinate> direction = getMaxSequelPos(myPlayer, useNeuralNet);
 		myPlayer = direction.second;
 		return direction.first;
@@ -192,29 +200,27 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 	private void learnQValue(See see, boolean onPolicy) {
 		int currentEpoch = 0;
 		int movesInEpoch = 0;
-		System.out.println("using neural network to train");
+		System.out.println("using QMatrix to learn the lake");
 		while (currentEpoch < epochs) {
 			// update state value table
-			ArrayList<Tuple<Richtung, Koordinate>> possible = getValidDirections(myPlayer);
-			for (Tuple<Richtung, Koordinate> tuple : possible) {
-				Koordinate coord = tuple.second;
-				double newValue = stateValue(coord, getReward(see.zustandAn(coord)), true);
-				state_value[coord.getZeile()][coord.getSpalte()] = newValue;
-
+			var possible = getValidDirectionsOnly(myPlayer);
+			for (var t : possible) {
+				var resultsInPosition = addDirToPos(myPlayer, t);
+				var stateAction = new Tuple<Richtung, Koordinate>(t, myPlayer);
+				double newValue = qValue(stateAction, getReward(see.zustandAn(resultsInPosition)), false);
+				q_matrix[myPlayer.getZeile()][myPlayer.getSpalte()][t.ordinal()] = newValue;
 			}
+
 			if (!onPolicy) {
 				int index = rnd.nextInt(possible.size());
-				myPlayer = possible.get(index).second;
+				var dir = possible.get(index);
+				var resultsInPosition = addDirToPos(myPlayer, dir);
+				myPlayer = resultsInPosition;
 			} else {
-				myPlayer = getMaxSequelPos(possible, false).second;
+				var stateAction = getMaxValueQMatrixPos(myPlayer, false);
+				myPlayer = addDirToPos(myPlayer, stateAction.first);// move to the best position
 			}
 			movesInEpoch++;
-
-			// stop epoch and start over when:
-			// - player got stuck in water
-			// - player finished the maze
-			// - number of moves in current epoch is bigger than allowed
-			learnNN(trainingSet);
 			if (see.zustandAn(myPlayer) == Zustand.Wasser || see.zustandAn(myPlayer) == Zustand.UWasser
 					|| see.zustandAn(myPlayer) == Zustand.Ziel || movesInEpoch > maxNumberMovesPerEpoch()) {
 
@@ -239,6 +245,21 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 				valid.add(new Tuple<Richtung, Koordinate>(r, new_pos));
 		}
 		return valid;
+	}
+
+	private ArrayList<Richtung> getValidDirectionsOnly(Koordinate player) {
+		ArrayList<Richtung> valid = new ArrayList<Richtung>();
+
+		for (Richtung r : Richtung.values()) {
+			Koordinate new_pos = addDirToPos(player, r);
+			if (isInBoard(brd_size, new_pos))
+				valid.add(r);
+		}
+		return valid;
+	}
+
+	private Koordinate addDirToPos(Koordinate player, Richtung r) {
+		return new Koordinate(player.getZeile() + r.deltaZ(), player.getSpalte() + r.deltaS());
 	}
 
 	private boolean isInBoard(int size, Koordinate position) {
@@ -285,6 +306,44 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		return possible.get(index);
 	}
 
+	private double qValue(Tuple<Richtung, Koordinate> stateAction, double reward, boolean neuralnet) {
+		Koordinate pos = stateAction.second;
+		Richtung r = stateAction.first;
+		double current = q_matrix[pos.getZeile()][pos.getSpalte()][r.ordinal()];
+		var nextPos = addDirToPos(pos, r);
+		double max_sequel = getMaxValueQMatrix(nextPos, neuralnet);
+		return (1 - learnrate) * current + reward * diskont + diskont * learnrate * max_sequel;
+	}
+
+	private double getMaxValueQMatrix(Koordinate player, boolean neuralnet) {
+		Tuple<Richtung, Koordinate> stateAction = getMaxValueQMatrixPos(player, neuralnet);
+		Koordinate pos = stateAction.second;
+		Richtung r = stateAction.first;
+		return q_matrix[pos.getZeile()][pos.getSpalte()][r.ordinal()];
+	}
+
+	private Tuple<Richtung, Koordinate> getMaxValueQMatrixPos(Koordinate player, boolean neuralnet) {
+		ArrayList<Richtung> possible = getValidDirectionsOnly(player);
+		return getMaxValueQMatrixPos(player, possible, neuralnet);
+	}
+
+	private Tuple<Richtung, Koordinate> getMaxValueQMatrixPos(Koordinate player, ArrayList<Richtung> possible,
+			boolean neuralnet) {
+		double max = Integer.MIN_VALUE;
+		int index = 0;
+		Koordinate pos = player;
+		for (int i = 0; i < possible.size(); i++) {
+			var dir = possible.get(i);
+			double value = q_matrix[pos.getZeile()][pos.getSpalte()][dir.ordinal()];
+			if (value > max) {
+				index = i;
+				max = value;
+			}
+		}
+
+		return new Tuple<Richtung, Koordinate>(possible.get(index), player);
+	}
+
 	private double getReward(Zustand state) {
 		if (state == Zustand.Wasser || state == Zustand.UWasser)
 			return REWARD_LOOSE;
@@ -318,6 +377,13 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		return brd_size * pos.getSpalte() + pos.getZeile();
 	}
 
+	public static double mapRange(double a1, double a2, double b1, double b2, double s) {
+		return b1 + ((s - a1) * (b2 - b1)) / (a2 - a1);
+	}
+
+	// *******************************
+	// PRINT FUNCTIONS
+	// *******************************
 	private static DecimalFormat df = new DecimalFormat("#.#####");
 
 	private void printStateValue() {
@@ -340,9 +406,5 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 			System.out.println();
 		}
 
-	}
-
-	public static double mapRange(double a1, double a2, double b1, double b2, double s) {
-		return b1 + ((s - a1) * (b2 - b1)) / (a2 - a1);
 	}
 }
