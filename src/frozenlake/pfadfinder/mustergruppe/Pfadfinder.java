@@ -20,7 +20,7 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 	private double[][] state_value;
 	// s(x,y),a(action) -> value
 	// Q(s,a) = (1-learnrate) * Q(s,a) + reward + diskont*learnrate*max(sequel)
-	// private double[][][] q_matrix;
+	private double[][][] q_matrix;
 	private MultiLayerPerceptron mlp;
 	private DataSet trainingSet;
 	private static Random rnd = new Random();
@@ -33,9 +33,9 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 	final double REWARD_LOOSE = -0.9;
 	final double REWARD_WIN = 0.5;
 
-	final double maxError = 0.00001;
-	final double learnrate = 0.5;
-	final double diskont = 0.9;
+	final double maxError = 0.5;
+	final double learnrate = 0.03;
+	final double diskont = 0.999;
 
 	boolean useStateValue = false;
 	boolean useNeuralNet = false;
@@ -43,6 +43,20 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 
 	public Pfadfinder() {
 
+	}
+
+	private void initLookupTables() {
+		state_value = new double[brd_size][brd_size];
+		q_matrix = new double[brd_size][brd_size][brd_size];
+		int input_size = brd_size * brd_size;
+		int output_size = 1;
+		mlp = new MultiLayerPerceptron(TransferFunctionType.TANH, input_size, input_size, input_size, output_size);
+
+		mlp.getLearningRule().setLearningRate(learnrate);
+		mlp.getLearningRule().setMaxError(maxError);
+		// mlp.getLearningRule().setMaxIterations(99);
+		trainingSet = new DataSet(input_size, output_size);
+		System.out.println("finished initialize");
 	}
 
 	@Override
@@ -175,6 +189,43 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		printStateValueRL();
 	}
 
+	private void learnQValue(See see, boolean onPolicy) {
+		int currentEpoch = 0;
+		int movesInEpoch = 0;
+		System.out.println("using neural network to train");
+		while (currentEpoch < epochs) {
+			// update state value table
+			ArrayList<Tuple<Richtung, Koordinate>> possible = getValidDirections(myPlayer);
+			for (Tuple<Richtung, Koordinate> tuple : possible) {
+				Koordinate coord = tuple.second;
+				double newValue = stateValue(coord, getReward(see.zustandAn(coord)), true);
+				state_value[coord.getZeile()][coord.getSpalte()] = newValue;
+
+			}
+			if (!onPolicy) {
+				int index = rnd.nextInt(possible.size());
+				myPlayer = possible.get(index).second;
+			} else {
+				myPlayer = getMaxSequelPos(possible, false).second;
+			}
+			movesInEpoch++;
+
+			// stop epoch and start over when:
+			// - player got stuck in water
+			// - player finished the maze
+			// - number of moves in current epoch is bigger than allowed
+			learnNN(trainingSet);
+			if (see.zustandAn(myPlayer) == Zustand.Wasser || see.zustandAn(myPlayer) == Zustand.UWasser
+					|| see.zustandAn(myPlayer) == Zustand.Ziel || movesInEpoch > maxNumberMovesPerEpoch()) {
+
+				currentEpoch++;
+				movesInEpoch = 0;
+				versuchZuende(see.zustandAn(myPlayer));// reset players position to the start
+				if (currentEpoch % 30 == 0)
+					System.out.println("\u001B[31mfinished epoch:\u001B[32m" + currentEpoch + "\u001B[0m");
+			}
+		}
+	}
 	// ****************************************************************
 	// HELPER FUNCTIONS
 	// ****************************************************************
@@ -259,19 +310,6 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		mlp.learn(set);
 	}
 
-	private void initLookupTables() {
-		state_value = new double[brd_size][brd_size];
-		// q_matrix = new double[brd_size][brd_size][brd_size];
-		int input_size = brd_size * brd_size;
-		int output_size = 1;
-		mlp = new MultiLayerPerceptron(TransferFunctionType.TANH, input_size, input_size, input_size, output_size);
-		// mlp.getLearningRule().setLearningRate(learnrate);
-		// mlp.getLearningRule().setMaxError(maxError);
-		// mlp.getLearningRule().setMaxIterations(99);
-		trainingSet = new DataSet(input_size, output_size);
-		System.out.println("finished initialize");
-	}
-
 	private int maxNumberMovesPerEpoch() {
 		return brd_size * 3;
 	}
@@ -280,7 +318,7 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		return brd_size * pos.getSpalte() + pos.getZeile();
 	}
 
-	private static DecimalFormat df = new DecimalFormat("#.##########");
+	private static DecimalFormat df = new DecimalFormat("#.#####");
 
 	private void printStateValue() {
 		System.out.println("StateValues");

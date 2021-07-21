@@ -27,7 +27,7 @@ public class SeeSimulator {
 		try {
 			IPfadfinder joe = new frozenlake.pfadfinder.mustergruppe.Pfadfinder();
 
-			See testsee2 = new See("Testsee", 6, new Koordinate(0, 0), new Koordinate(5, 5));
+			See testsee2 = new See("Testsee", 6, new Koordinate(0, 0), new Koordinate(5,5));
 			See testsee = See.ladeSee("D:\\Development\\java\\frozenlake\\testseen\\", "See30Komplex");
 			testsee = testsee2;
 			testsee.wegErzeugen();
