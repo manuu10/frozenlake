@@ -47,16 +47,16 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 
 	private void initLookupTables() {
 		state_value = new double[brd_size][brd_size];
-		q_matrix = new double[brd_size][brd_size][brd_size];
+		q_matrix = new double[brd_size][brd_size][4];
 		int input_size = brd_size * brd_size;
 		int output_size = 1;
-		int hidden_size = input_size * (2 / 3) + output_size;
 		mlp = new MultiLayerPerceptron(TransferFunctionType.TANH, input_size, input_size, input_size, output_size);
+		trainingSet = new DataSet(input_size, output_size);
 
-		// mlp.getLearningRule().setLearningRate(learnrate);
+		int hidden_size = input_size * (2 / 3) + output_size;
+		// mlp.getLearningRule().setLearningRate(0.05);
 		// mlp.getLearningRule().setMaxError(maxError);
 		// mlp.getLearningRule().setMaxIterations(99);
-		trainingSet = new DataSet(input_size, output_size);
 		System.out.println("finished initialize");
 	}
 
@@ -121,38 +121,34 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		printStateValue();
 		System.out.println("using neural network to train");
 		while (currentEpoch < epochs) {
-			// update state value table
 			ArrayList<Tuple<Richtung, Koordinate>> possible = getValidDirections(myPlayer);
 			for (Tuple<Richtung, Koordinate> tuple : possible) {
 				Koordinate coord = tuple.second;
 				double newValue = stateValue(coord, getReward(see.zustandAn(coord)), true);
+				if (newValue <= -1)
+					newValue = -0.999999999999999;
+				if (newValue >= 1)
+					newValue = 0.999999999999999;
 				trainingSet.add(new DataSetRow(createInputVector(coord), new double[] { newValue }));
 			}
 
-			// decide wether to use off or on policy
-			// off-policy -> choose a random next position
-			// on-policy -> choose the position with the currently highest value;
 			if (!onPolicy) {
 				int index = rnd.nextInt(possible.size());
 				myPlayer = possible.get(index).second;
 			} else {
 				myPlayer = getMaxSequelPos(possible, true).second;
 			}
-			movesInEpoch++;
 
-			// stop epoch and start over when:
-			// - player got stuck in water
-			// - player finished the maze
-			// - number of moves in current epoch is bigger than allowed
+			movesInEpoch++;
 			learnNN(trainingSet);
+			// trainingSet = new DataSet(brd_size * brd_size, 1);
 			if (see.zustandAn(myPlayer) == Zustand.Wasser || see.zustandAn(myPlayer) == Zustand.UWasser
 					|| see.zustandAn(myPlayer) == Zustand.Ziel || movesInEpoch > maxNumberMovesPerEpoch()) {
-
 				currentEpoch++;
 				movesInEpoch = 0;
 				versuchZuende(see.zustandAn(myPlayer));// reset players position to the start
-				if (currentEpoch % 30 == 0)
-					System.out.println("\u001B[31mfinished epoch:\u001B[32m" + currentEpoch + "\u001B[0m");
+				// if (currentEpoch % 50 == 0)
+				System.out.println("\u001B[31mfinished epoch:\u001B[32m" + currentEpoch + "\u001B[0m");
 			}
 		}
 		printStateValue();
@@ -272,6 +268,7 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 	// calculate the state value function for a specific position
 	private double stateValue(Koordinate player, double reward, boolean neuralnet) {
 		double current = state_value[player.getZeile()][player.getSpalte()];
+
 		double max_sequel = getMaxSequel(player, neuralnet);
 		return (1 - learnrate) * current + reward * diskont + diskont * learnrate * max_sequel;
 	}
@@ -354,16 +351,16 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		return REWARD_NEUTRAL;
 	}
 
-	private double[] createInputVector(Koordinate player) {
-		double[] input = new double[brd_size * brd_size];
-		input[convert2DTo1D(player)] = 1;
-		return input;
-	}
-
 	private double getStateValueNN(Koordinate player) {
 		mlp.setInput(createInputVector(player));
 		mlp.calculate();
 		return mlp.getOutput()[0];
+	}
+
+	private double[] createInputVector(Koordinate player) {
+		double[] input = new double[brd_size * brd_size];
+		input[convert2DTo1D(player)] = 1;
+		return input;
 	}
 
 	private void learnNN(DataSet set) {

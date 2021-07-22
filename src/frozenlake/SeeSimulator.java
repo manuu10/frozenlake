@@ -27,13 +27,16 @@ public class SeeSimulator {
 		boolean useStateValue = false;
 		boolean useNN = false;
 		boolean useOnPolicy = true;
-		int lakeSize = 15;
+		int lakeSize = 6;
+		boolean useRandomGenerated = true;
+
 		try {
 			IPfadfinder joe = new frozenlake.pfadfinder.mustergruppe.Pfadfinder();
-			See testsee2 = new See("Testsee", lakeSize, new Koordinate(0, 0),
+			See testSeeRandom = new See("Testsee", lakeSize, new Koordinate(0, 0),
 					new Koordinate(lakeSize - 1, lakeSize - 1));
 			See testsee = See.ladeSee("D:\\Development\\java\\frozenlake\\testseen\\", "See8");
-			testsee = testsee2;
+			if (useRandomGenerated)
+				testsee = testSeeRandom;
 			testsee.wegErzeugen();
 			// testsee.speichereSee("Testsee");
 			System.out.println("start learning");
@@ -51,13 +54,15 @@ public class SeeSimulator {
 				naechsterZustand = testsee.geheNach(r);
 				anzahlSchritte++;
 				printSeeColored(testsee);
-			} while (!((naechsterZustand == Zustand.Ziel) || (naechsterZustand == Zustand.Wasser)));
+			} while (!((naechsterZustand == Zustand.Ziel) || (naechsterZustand == Zustand.Wasser)
+					|| anzahlSchritte > lakeSize * lakeSize));
 
 			if (naechsterZustand == Zustand.Ziel) {
 				System.out.println("Sie haben Ihr Ziel erreicht! Anzahl Schritte: " + anzahlSchritte);
 			} else {
 				System.out.println("Sie sind im Wasser gelandet. Anzahl Schritte bis dahin: " + anzahlSchritte);
 			}
+
 		} catch (Exception ex) {
 			System.err.println("Exception nach " + anzahlSchritte + " Schritten!");
 			ex.printStackTrace();
