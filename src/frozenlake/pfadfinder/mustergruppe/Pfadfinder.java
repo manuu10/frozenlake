@@ -50,10 +50,9 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		q_matrix = new double[brd_size][brd_size][4];
 		int input_size = brd_size * brd_size;
 		int output_size = 1;
+		int hidden_size = input_size * (2 / 3) + output_size;
 		mlp = new MultiLayerPerceptron(TransferFunctionType.TANH, input_size, input_size, input_size, output_size);
 		trainingSet = new DataSet(input_size, output_size);
-
-		int hidden_size = input_size * (2 / 3) + output_size;
 		// mlp.getLearningRule().setLearningRate(0.05);
 		// mlp.getLearningRule().setMaxError(maxError);
 		// mlp.getLearningRule().setMaxIterations(99);
@@ -94,6 +93,14 @@ public class Pfadfinder implements frozenlake.pfadfinder.IPfadfinder {
 		useOnPolicy = onPolicy;
 		brd_size = see.getGroesse();
 		myPlayer = see.spielerPosition();
+		if (q_matrix == null || state_value == null || mlp == null)
+			initLookupTables();
+
+		if (useStateValue && !useNeuralNet)
+			printStateValueRL();
+		if (useStateValue && useNeuralNet)
+			printStateValue();
+
 		return true;
 	}
 

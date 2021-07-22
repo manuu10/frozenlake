@@ -24,7 +24,7 @@ public class SeeSimulator {
 
 	public static void main(String[] args) {
 		int anzahlSchritte = 0;
-		boolean useStateValue = false;
+		boolean useStateValue = true;
 		boolean useNN = false;
 		boolean useOnPolicy = true;
 		int lakeSize = 6;
@@ -34,7 +34,7 @@ public class SeeSimulator {
 			IPfadfinder joe = new frozenlake.pfadfinder.mustergruppe.Pfadfinder();
 			See testSeeRandom = new See("Testsee", lakeSize, new Koordinate(0, 0),
 					new Koordinate(lakeSize - 1, lakeSize - 1));
-			See testsee = See.ladeSee("D:\\Development\\java\\frozenlake\\testseen\\", "See8");
+			See testsee = See.ladeSee("D:\\Development\\java\\frozenlake\\testseen\\", "See30Komplex");
 			if (useRandomGenerated)
 				testsee = testSeeRandom;
 			testsee.wegErzeugen();
@@ -45,8 +45,10 @@ public class SeeSimulator {
 			System.out.println("finished learning");
 			// Testdurchlauf mit dem trainierten IPfadfinder
 			joe.starteUeberquerung(testsee, useStateValue, useNN, useOnPolicy);
-			testsee.anzeigen();
+			// testsee.anzeigen();
+			printSeeColored(testsee);
 
+			int size_of_lake = testsee.getGroesse();
 			Zustand naechsterZustand = Zustand.Start;
 			do {
 				Richtung r = joe.naechsterSchritt(naechsterZustand);
@@ -55,12 +57,15 @@ public class SeeSimulator {
 				anzahlSchritte++;
 				printSeeColored(testsee);
 			} while (!((naechsterZustand == Zustand.Ziel) || (naechsterZustand == Zustand.Wasser)
-					|| anzahlSchritte > lakeSize * lakeSize));
+					|| (anzahlSchritte > size_of_lake * size_of_lake)));
 
 			if (naechsterZustand == Zustand.Ziel) {
 				System.out.println("Sie haben Ihr Ziel erreicht! Anzahl Schritte: " + anzahlSchritte);
 			} else {
-				System.out.println("Sie sind im Wasser gelandet. Anzahl Schritte bis dahin: " + anzahlSchritte);
+				if (anzahlSchritte > size_of_lake * size_of_lake) {
+					System.out.println("Maximale Anzahl an Schritten erreicht");
+				} else
+					System.out.println("Sie sind im Wasser gelandet. Anzahl Schritte bis dahin: " + anzahlSchritte);
 			}
 
 		} catch (Exception ex) {
