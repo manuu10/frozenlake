@@ -1,4 +1,4 @@
-package frozenlake.pfadfinder.mustergruppe;
+package frozenlake.pfadfinder.heseal;
 
 public class Tuple<X, Y> {
   public final X first;

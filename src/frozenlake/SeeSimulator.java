@@ -31,7 +31,7 @@ public class SeeSimulator {
 		boolean useRandomGenerated = true;
 
 		try {
-			IPfadfinder joe = new frozenlake.pfadfinder.mustergruppe.Pfadfinder();
+			IPfadfinder joe = new frozenlake.pfadfinder.heseal.Pfadfinder();
 			See testSeeRandom = new See("Testsee", lakeSize, new Koordinate(0, 0),
 					new Koordinate(lakeSize - 1, lakeSize - 1));
 			See testsee = See.ladeSee("D:\\Development\\java\\frozenlake\\testseen\\", "See30Komplex");

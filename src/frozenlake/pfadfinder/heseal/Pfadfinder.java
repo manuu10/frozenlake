@@ -1,4 +1,4 @@
-package frozenlake.pfadfinder.mustergruppe;
+package frozenlake.pfadfinder.heseal;
 
 import java.text.DecimalFormat;
 import java.util.*;
